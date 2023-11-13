@@ -1,4 +1,4 @@
-@echo on
+@echo off
 SETLOCAL EnableDelayedExpansion
 
 :: 清空cmake文件
@@ -20,9 +20,6 @@ for %%i in ("%PROJECT_ROOT_DIR%") do set PROJECT_ROOT_DIR=%%~fi
 :: 设置构建目录
 set BUILD_DIR=%PROJECT_ROOT_DIR%build
 
-:: 创建构建目录（如果不存在）
-if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
-
 :: 进入构建目录
 cd "%BUILD_DIR%"
 
@@ -37,6 +34,10 @@ cmake --build . --config %BUILD_TYPE%
 :: 返回原始目录
 cd "%SCRIPT_DIR%"
 
+:: 清空cmake文件
+call clean
+
 :: 结束
 echo Build finished.
+
 ENDLOCAL
