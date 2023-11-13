@@ -1,0 +1,1 @@
+// Placeholder for src/manager/ManagerNode.cpp
