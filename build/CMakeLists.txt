@@ -17,6 +17,12 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# 设置输出目录
+# 所有的可执行文件和库都会被放置在这个目录下
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ../bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ../bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ../bin)
+
 # 包含目录
 # 添加项目中的include目录路径
 #include_directories(../src/common)

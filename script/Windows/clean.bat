@@ -1,4 +1,4 @@
-@echo on
+@echo off
 cd ../../build
 
 :: 删除所有文件（除了 CMakeLists.txt）

@@ -1,0 +1,8 @@
+# 忽略 bin 目录
+bin/
+
+# 忽略 build 目录中的所有文件
+build/*
+
+# 但不忽略 build 目录中的 CMakeLists.txt
+!build/CMakeLists.txt
