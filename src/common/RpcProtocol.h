@@ -1,8 +1,16 @@
-#ifndef RPCPROTOCOL_H
+﻿#ifndef RPCPROTOCOL_H
 #define RPCPROTOCOL_H
 
 #include <string>
 #include <vector>
+
+// 定义动态库导出宏
+#if defined(_WIN32) || defined(__CYGWIN__)
+#define RPC_PROTOCOL __declspec(dllexport)
+#else
+#define RPC_PROTOCOL
+#endif
+
 
 namespace RpcProtocol {
 
@@ -35,16 +43,15 @@ namespace RpcProtocol {
         std::string data;   // 响应数据，可能是 TimeResponse 的序列化形式
     };
 
-    // 序列化和反序列化函数
-    std::string serialize(const RpcRequest& request);
-    RpcRequest deserializeRequest(const std::string& data);
+    // 序列化和反序列化函数，应用导出宏
+    std::string RPC_PROTOCOL serialize(const RpcRequest& request);
+    RpcRequest RPC_PROTOCOL deserializeRequest(const std::string& data);
 
-    std::string serialize(const RpcResponse& response);
-    RpcResponse deserializeResponse(const std::string& data);
+    std::string RPC_PROTOCOL serialize(const RpcResponse& response);
+    RpcResponse RPC_PROTOCOL deserializeResponse(const std::string& data);
 
-    // 辅助函数
-    std::string getCurrentTime(); // 获取当前时间的函数
-    std::string averageTime(const std::vector<std::string>& times); // 计算平均时间的函数
+    // 辅助函数，应用导出宏
+    std::string RPC_PROTOCOL getCurrentTime(); // 获取当前时间的函数
+    std::string RPC_PROTOCOL averageTime(const std::vector<std::string>& times); // 计算平均时间的函数
 }
-
 #endif // RPCPROTOCOL_H

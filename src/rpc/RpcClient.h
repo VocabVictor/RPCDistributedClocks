@@ -9,12 +9,12 @@
 
 // 定义动态库导出宏
 #if defined(_WIN32) || defined(__CYGWIN__)
-#define DLL_EXPORT __declspec(dllexport)
+#define RPC_CLIENT __declspec(dllexport)
 #else
-#define DLL_EXPORT
+#define RPC_CLIENT
 #endif
 
-class DLL_EXPORT RpcClient {
+class RPC_CLIENT RpcClient {
 public:
     // 构造函数
     RpcClient(asio::io_context& io_context, const std::string& serverAddress, int serverPort);

@@ -18,7 +18,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ../bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ../bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ../bin/dll)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ../bin)
 
 add_library(rpc SHARED
@@ -28,11 +28,44 @@ add_library(rpc SHARED
          ../src/rpc/RpcServer.h
 )
 
+add_library(common SHARED
+        ../src/common/RpcProtocol.cpp
+        ../src/common/RpcProtocol.h
+        ../src/common/Utilities.cpp
+        ../src/common/Utilities.h
+        ../src/common/CommandLineParser.cpp
+        ../src/common/CommandLineParser.h
+)
+
+add_library(
+        manager SHARED
+        ../src/manager/ManagerMain.cpp
+        ../src/manager/ManagerMain.h
+        ../src/manager/ManagerNode.cpp
+        ../src/manager/ManagerNode.h
+        ../src/manager/TimeCollector.cpp
+        ../src/manager/TimeCollector.h
+)
+
+add_library(
+        worker SHARED
+        ../src/worker/ClockService.cpp
+        ../src/worker/ClockService.h
+        ../src/worker/WorkerMain.cpp
+        ../src/worker/WorkerMain.h
+        ../src/worker/WorkerNode.cpp
+        ../src/worker/WorkerNode.h
+)
+
 add_executable(RPCDistributedClocks
         ../src/main.cpp
         ../src/main.h)
 
 target_link_libraries(RPCDistributedClocks rpc)
+target_link_libraries(RPCDistributedClocks common)
+target_link_libraries(RPCDistributedClocks worker)
+target_link_libraries(RPCDistributedClocks manager)
+
 target_compile_options(RPCDistributedClocks PUBLIC -DASIO_STANDALONE)
 target_include_directories(RPCDistributedClocks PUBLIC ${ASIO_INCLUDE})
 
