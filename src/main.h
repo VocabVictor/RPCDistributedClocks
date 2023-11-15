@@ -2,18 +2,26 @@
 #define MAIN_H
 
 // 包含必要的头文件
-#include "rpc/RpcClient.h"        // RPC客户端
-#include "rpc/RpcServer.h"        // RPC服务器
-#include "common/Utilities.h"     // 通用工具
-#include "manager/ManagerNode.h" // 管理节点
-#include "worker/WorkerNode.h"   // 工作节点
+#include "manager/ManagerNode.h"  // 管理器主要类
+#include "worker/WorkerNode.h"    // 工作者主要类
 
-// 全局常量或变量（如有）
+class CommandLineParser {
+public:
+    CommandLineParser(int argc, char* argv[]);
 
-// 主要应用逻辑的函数原型
-void startManagerNode();       // 启动管理节点
-void startWorkerNode();        // 启动工作节点
-void configureRpcServer();     // 配置RPC服务器
+    static void printHelp() ;
+    void printVersion() const;
+    void run() const;
+
+private:
+    bool _isManager;
+    bool _isWorker;
+    bool _isHelp;
+    bool _isVersion;
+    const std::string _version = "0.1.0";
+    std::string _address;
+    int _port;
+};
 
 // 主函数声明
 int main(int argc, char* argv[]);

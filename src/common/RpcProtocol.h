@@ -18,22 +18,14 @@ namespace RpcProtocol {
     enum class OperationType {
         RequestTime, // 请求时间
         SendTime,    // 发送时间
-        // 可能的其他操作类型...
-    };
-
-    // 时间请求消息的结构
-    struct TimeRequest {
-        // 可以包含特定的请求细节，如请求者ID等
-    };
-
-    // 时间响应消息的结构
-    struct TimeResponse {
-        std::string time; // 包含时间信息
+        Service,     // 服务
+        Invalid     // 无效操作
     };
 
     // RPC 请求消息的结构
     struct RpcRequest {
-        OperationType type; // 操作类型
+        OperationType type;  // 操作类型
+        std::string serviceName;  // 服务名称
         std::string data;   // 用于序列化的数据，可能是 TimeRequest 的序列化形式
     };
 
@@ -50,8 +42,5 @@ namespace RpcProtocol {
     std::string RPC_PROTOCOL serialize(const RpcResponse& response);
     RpcResponse RPC_PROTOCOL deserializeResponse(const std::string& data);
 
-    // 辅助函数，应用导出宏
-    std::string RPC_PROTOCOL getCurrentTime(); // 获取当前时间的函数
-    std::string RPC_PROTOCOL averageTime(const std::vector<std::string>& times); // 计算平均时间的函数
 }
 #endif // RPCPROTOCOL_H

@@ -8,22 +8,27 @@
 #define WORKER_NODE
 #endif
 
+#include <string>
+#include "RpcClient.h"
+#include "../common/RpcProtocol.h"
+
 class WORKER_NODE WorkerNode {
 public:
-    WorkerNode(); // 构造函数
+    WorkerNode(const std::string& nodeAddress,int nodePort);
 
-    // 初始化节点
-    void initialize();
+    void connectToManager(const std::string &managerAddress, int managerPort);
+    void disconnectFromManager();
 
-    // 启动节点
-    void start();
-
-    // 停止节点
-    void stop();
+    void performTask();
 
 private:
-    bool isInitialized; // 节点初始化状态
-    bool isRunning;     // 节点运行状态
+    RpcClient rpcClient_;
+    std::string managerAddress_;
+    int managerPort_;
+    // 其他与 WorkerNode 相关的成员
+    std::string nodeAddress_;
+    int nodePort_;
 };
+
 
 #endif // WORKERNODE_H

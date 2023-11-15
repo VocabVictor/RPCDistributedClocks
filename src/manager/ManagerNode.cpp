@@ -1,5 +1,4 @@
-﻿#include "ManagerMain.h"
-#include <iostream>
+﻿#include <iostream>
 #include <fstream>
 #include <string>
 #include <chrono>
@@ -7,79 +6,186 @@
 #include <sstream>
 #include <thread>
 #include <algorithm>
-// 包含其他必要的头文件
+#include "ManagerNode.h"
 
-ManagerMain::ManagerMain(bool dualMode, int port, int waittime)
-{
-    _isRunning = false;
-    _dualMode = dualMode;
-    _port = port;
-    _waittime = waittime;
+ManagerNode::ManagerNode(int port) : _port(port), _rpcServer(port) {}
+
+void ManagerNode::start() {
+    registerServicesToRpcServer();
+    _rpcServer.start(); // 启动RPC服务器
 }
 
-void ManagerMain::start() {
-    _isRunning = true;
-    // 启动逻辑，可能包括启动监控管理器的线程
-    if( !_dualMode ){
-        monitorManagers();
-    }else{
-        // 启动管理器逻辑
-        addManager("127.0.0.1",_port);
+void ManagerNode::registerServicesToRpcServer() {
+    // 在这里注册 ManagerServiceImpl 的服务到 RpcServer
+    ManagerServiceImpl serviceImpl(this);
+    for(const auto& serviceHandler : serviceImpl.getServices()){
+        _rpcServer.registerService(serviceHandler.first,serviceHandler.second);
     }
 }
 
-void ManagerMain::stop() {
-    _isRunning = false;
-    // 停止逻辑
-}
-
-void ManagerMain::addManager(const std::string& nodeAddress,int port) {
+void ManagerNode::addWorker(const std::string& nodeAddress, int port) {
     // 添加管理器逻辑
-    ManagerNode node(nodeAddress,port);
-    _managers.emplace_back(node);
+    _workers.emplace_back(nodeAddress,port);
 }
 
-void ManagerMain::removeManager(const std::string& nodeAddress, int port) {
+void ManagerNode::removeWorker(const std::string& nodeAddress, int port) {
+
+    // 使用 std::find 查找要移除的工作节点
+    auto it = std::find(_workers.begin(), _workers.end(), std::make_pair(nodeAddress, port));
+
+    // 检查是否找到工作节点
+    if (it != _workers.end()) {
+        // 找到节点，从向量中移除它
+        _workers.erase(it);
+        // 可以添加其他逻辑，如通知成功移除等
+        log("Worker removed");
+    } else {
+        // 没有找到节点
+        log("Node not found");
+    }
 
 }
 
 
-void ManagerMain::monitorManagers() {
-    bool exceptionOccurred;
-    while (_isRunning) {
-        exceptionOccurred = false;
-        // 定期检查每个管理器的状态
-        for (ManagerNode manager : _managers) {
-            // 如果发现管理器异常
-             if ( !manager.checkRpcConnection("127.0.0.1",_port) ) {
-                handleManagerFailure(manager);
-                 exceptionOccurred = true;
-             }
-        }
+void ManagerNode::monitorWorkers() {
+    std::vector<std::pair<std::string, int>> disconnectedWorkers;
 
-        // 每5秒检查一次
-        std::this_thread::sleep_for(std::chrono::seconds(_waittime));
-        if( !exceptionOccurred ){
-            log("All managers are running normally.");
+    // 检查每个管理器的状态
+    for (const auto& worker : _workers) {
+        bool isConnected = _rpcServer.checkRpcConnection(worker.first, worker.second);
+        if (!isConnected) {
+            // 如果发生异常，则将该管理器添加到待移除列表
+            disconnectedWorkers.push_back(worker);
         }
+    }
+
+    // 移除所有断开连接的工作节点
+    for (const auto& worker : disconnectedWorkers) {
+        removeWorker(worker.first, worker.second);
+    }
+
+    if (_workers.empty()) {
+        log("No workers are running");
+    } else {
+        log("All workers are running");
     }
 }
 
-void ManagerMain::handleManagerFailure(const std::string& managerAddress) {
-    // 处理管理器失败的逻辑，如转移其下属工作节点
-    // ...
-}
 
-void ManagerMain::log(const std::string& message) {
+
+void ManagerNode::log(const std::string& message) {
     auto now = std::chrono::system_clock::now();
     auto now_c = std::chrono::system_clock::to_time_t(now);
+    std::tm tm{};
     std::stringstream ss;
-    ss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %X") << " - " << message;
 
-    // 输出到控制台
-    std::cout << "Log: " << ss.str() << std::endl;
+    #ifdef _MSC_VER
+        localtime_s(&tm, &now_c);
+    #else
+        localtime_r(&now_c, &tm);
+    #endif
+
+    ss << std::put_time(&tm, "%Y-%m-%d %X") << " - " << message;
 
     // 输出到文件
-    std::ofstream logFile(_log, std::ios::app);
-    logFile << "Log: " << ss.str() << std::endl;
+    std::ofstream logFile(_logfile, std::ios::app);
+    if (logFile.is_open()) {
+        logFile << "Manager Log: " << ss.str() << std::endl;
+    } else {
+        // 可以在这里处理文件打开失败的情况
+        // 记录到备用日志或通知用户
+        std::cerr << "Manager Log: " << ss.str() << std::endl;
+    }
+}
+
+std::vector<std::pair<std::string,int>> ManagerNode::getWorkers() const {
+    return _workers;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+ManagerServiceImpl::ManagerServiceImpl(ManagerNode *pNode) {
+    serviceHandlers["time"] = [this](RpcChannel& clientRpcChannel) { handleTimeService(clientRpcChannel); };
+    serviceHandlers["date"] = [this](RpcChannel& clientRpcChannel) { handleDateService(clientRpcChannel); };
+    serviceHandlers["addworker"] = [this](RpcChannel& clientRpcChannel) { this->handleAddWorker(clientRpcChannel); };
+    serviceHandlers["removeworker"] = [this](RpcChannel& clientRpcChannel) { this->handleRemoveWorker(clientRpcChannel); };
+    serviceHandlers["monitorworkers"] = [this](RpcChannel& clientRpcChannel) { this->handleMonitorWorkers(clientRpcChannel); };
+    _managerNode = pNode;
+}
+
+void ManagerServiceImpl::handleTimeService(RpcChannel& clientRpcChannel) {
+    // 接收请求
+    RpcProtocol::RpcRequest request = clientRpcChannel.receiveRequest();
+
+    // 构造响应
+    RpcProtocol::RpcResponse response;
+    response.success = true;
+    response.data = "data: 2023-10-15";
+
+    // 发送响应
+    clientRpcChannel.sendResponse(response);
+}
+
+void ManagerServiceImpl::handleDateService(RpcChannel& clientRpcChannel) {
+}
+
+void ManagerServiceImpl::handleAddWorker(RpcChannel& clientRpcChannel) {
+}
+
+void ManagerServiceImpl::handleRemoveWorker(RpcChannel& clientRpcChannel) {
+}
+
+void ManagerServiceImpl::handleMonitorWorkers(RpcChannel& clientRpcChannel) {
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+
+
+RpcServer::RpcServer(int port) : port_(port) {}
+
+RpcServer::~RpcServer() = default;
+
+void RpcServer::registerService(const std::string& serviceName, std::function<void(RpcChannel&)> handler) {
+    services[serviceName] = std::move(handler);
+}
+
+void RpcServer::handleClient(RpcChannel channel) const {
+    // 接收请求
+    RpcProtocol::RpcRequest request = channel.receiveRequest();
+
+    // 打印请求体信息
+    std::cout << "Received request for service: " << request.serviceName << std::endl;
+    std::cout << "Request data: " << request.data << std::endl;
+
+    // 查找并调用相应的服务处理函数
+    auto it = services.find(request.serviceName);
+    if (it != services.end()) {
+        // 调用服务处理函数
+        it->second(channel);
+    } else {
+        // 打印错误信息，如果找不到相应的服务
+        std::cerr << "Service not found: " << request.serviceName << std::endl;
+
+        // 打印可用的服务列表
+        std::cerr << "Available services:" << std::endl;
+        for (const auto& service : services) {
+            std::cerr << " - " << service.first << std::endl;
+        }
+    }
+
+    // 断开连接
+    channel.disconnect();
+}
+
+
+bool RpcServer::checkRpcConnection(const std::string& targetAddress, int targetPort) {
+    return true;
+}
+
+void RpcServer::start() const {
+    std::cout << "Server started, waiting for connections on port " << port_ << std::endl;
+
+    RpcChannel rpc_server_channel(port_); // 创建用于接受连接的 RpcChannel
+    rpc_server_channel.listenAndAccept([this](RpcChannel channel) { handleClient(channel); }); // 监听连接并处理客户端
 }

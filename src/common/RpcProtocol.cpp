@@ -1,49 +1,82 @@
-﻿#include "RpcProtocol.h"
+﻿#include <sstream>
+#include <iostream>
+#include "RpcProtocol.h"
 
 namespace RpcProtocol {
 
-    // 将 RpcRequest 序列化为字符串
-    std::string RPC_PROTOCOL  serialize(const RpcRequest& request) {
-        // 示例序列化逻辑，需要根据实际情况进行调整
-        return "RequestType: " + std::to_string(static_cast<int>(request.type)) + "; Data: " + request.data;
+    std::string RPC_PROTOCOL serialize(const RpcRequest& request) {
+        std::stringstream ss;
+        ss << "RequestType: " << static_cast<int>(request.type) << "; ";
+        ss << "ServiceName: " << request.serviceName << "; ";
+        ss << "Data: " << request.data;
+        return ss.str();
     }
 
-    // 从字符串反序列化 RpcRequest
     RpcRequest RPC_PROTOCOL deserializeRequest(const std::string& data) {
-        // 示例反序列化逻辑，需要根据实际情况进行调整
+
         RpcRequest request;
-        // 解析 data 字符串来填充 request 的字段
-        // ...
+        std::istringstream iss(data);
+        std::string segment;
+
+        while (std::getline(iss, segment, ';')) {
+            std::istringstream segmentStream(segment);
+            std::string key;
+            std::getline(segmentStream, key, ':');
+            std::string value;
+            std::getline(segmentStream, value);
+            value.erase(0, value.find_first_not_of(' ')); // Trim leading space
+
+            if (key == "RequestType") {
+                request.type = static_cast<OperationType>(std::stoi(value));
+            } else if (key == "ServiceName") {
+                request.serviceName = value;
+            } else if (key == "Data") {
+                request.data = value;
+            }
+        }
+
         return request;
     }
 
     // 将 RpcResponse 序列化为字符串
     std::string RPC_PROTOCOL serialize(const RpcResponse& response) {
-        // 示例序列化逻辑，需要根据实际情况进行调整
-        return "Success: " + std::to_string(response.success) + "; Data: " + response.data;
+        // 创建一个字符串流
+        std::stringstream ss;
+
+        // 序列化成功标志
+        ss << "Success: " << (response.success ? "true" : "false") << "; ";
+
+        // 序列化响应数据
+        ss << "Data: " << response.data;
+
+        // 返回序列化后的字符串
+        return ss.str();
     }
 
-    // 从字符串反序列化 RpcResponse
+
     RpcResponse RPC_PROTOCOL deserializeResponse(const std::string& data) {
-        // 示例反序列化逻辑，需要根据实际情况进行调整
         RpcResponse response;
-        // 解析 data 字符串来填充 response 的字段
-        // ...
+        std::istringstream iss(data);
+
+        std::string segment;
+        while (std::getline(iss, segment, ';')) {
+            std::istringstream segmentStream(segment);
+            std::string key;
+            if (std::getline(segmentStream, key, ':')) {
+                std::string value;
+                std::getline(segmentStream, value); // 去掉前导空格
+                value.erase(0, value.find_first_not_of(' ')); // Trim leading space
+
+                if (key == "Success") {
+                    response.success = (value == "true");
+                } else if (key == "Data") {
+                    response.data = value;
+                }
+            }
+        }
+
         return response;
     }
 
-    // 获取当前时间的函数实现
-    std::string RPC_PROTOCOL getCurrentTime() {
-        // 返回当前时间的字符串表示
-        // 这里仅返回一个示例字符串，您需要根据实际情况实现
-        return "2023-03-15 12:00:00";
-    }
-
-    // 计算平均时间的函数实现
-    std::string RPC_PROTOCOL averageTime(const std::vector<std::string>& times) {
-        // 实现计算平均时间的逻辑
-        // 这里仅返回一个示例字符串，您需要根据实际情况实现
-        return "2023-03-15 12:00:00";
-    }
 
 }

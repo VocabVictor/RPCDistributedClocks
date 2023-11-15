@@ -1,41 +1,86 @@
 ﻿#ifndef MANAGERMAIN_H
 #define MANAGERMAIN_H
 
-#include <vector>
-#include <string>
-#include <unordered_map>
-#include "ManagerNode.h"
-
 #if defined(_WIN32) || defined(__CYGWIN__)
 #define MANAGER_MAIN __declspec(dllexport)
 #else
 #define MANAGER_MAIN
 #endif
 
+#if defined(_WIN32) || defined(__CYGWIN__)
+#define MANAGER_SERVICE_IMPL __declspec(dllexport)
+#else
+#define MANAGER_SERVICE_IMPL
+#endif
 
-class MANAGER_MAIN ManagerMain {
+#if defined(_WIN32) || defined(__CYGWIN__)
+#define RPC_SERVER __declspec(dllexport)
+#else
+#define RPC_SERVER
+#endif
+
+#include <string>
+#include <vector>
+#include <functional>
+#include <unordered_map>
+#include "../common/RpcChannel.h"
+
+class RPC_SERVER RpcServer {
 public:
-    explicit ManagerMain(bool dualMode, int port = 1080, int waittime = 5);
+    explicit RpcServer(int port);
+    ~RpcServer();
 
-    void start();
-    void stop();
-
-    void addManager(const std::string& managerAddress,int port);
-    void removeManager(const std::string& nodeAddress, int port);
-    void monitorManagers(); // 监听管理器节点的状态
+    [[noreturn]] void start() const;
+    void registerService(const std::string& serviceName, std::function<void(RpcChannel&)> handler);
+    bool checkRpcConnection(const std::string& targetAddress, int targetPort);
 
 private:
-    bool _isRunning;
-    bool _dualMode;
-    int _waittime;
-    int _port;
-    const std::string _log = "manager.log";
-    std::unordered_map<ManagerNode &,int> _managerMap;
-    std::vector<ManagerNode> _managers;
+    int port_;
+    std::unordered_map<std::string, std::function<void(RpcChannel&)>> services;
+    void handleClient(RpcChannel channel) const;
 
-    // 处理异常状态的方法，例如转移工作节点
-    void handleManagerFailure(const std::string& managerAddress);
-    void log(const std::string& message);
 };
+
+class MANAGER_MAIN ManagerNode {
+public:
+    explicit ManagerNode(int port = 1080);
+
+    void start();
+
+    void addWorker(const std::string& managerAddress,int port);
+    // 处理异常状态的方法，例如转移工作节点
+    void removeWorker(const std::string& nodeAddress, int port);
+    void monitorWorkers();
+    void log(const std::string& message);
+    void registerServicesToRpcServer();
+    std::vector<std::pair<std::string,int>> getWorkers() const;
+
+private:
+    int _port;
+    RpcServer _rpcServer;
+    const std::string _logfile = "manager.log";
+    std::vector<std::pair<std::string,int>> _workers;
+};
+
+class MANAGER_SERVICE_IMPL ManagerServiceImpl {
+public:
+    explicit ManagerServiceImpl(ManagerNode *pNode);
+
+    void handleTimeService(RpcChannel& clientRpcChannel);
+    void handleDateService(RpcChannel& clientRpcChannel);
+    void handleAddWorker(RpcChannel& clientRpcChannel);
+    void handleRemoveWorker(RpcChannel& clientRpcChannel);
+    void handleMonitorWorkers(RpcChannel& clientRpcChannel);
+
+    const std::unordered_map<std::string, std::function<void(RpcChannel&)>>& getServices() const {
+        return serviceHandlers;
+    }
+
+private:
+    std::unordered_map<std::string, std::function<void(RpcChannel&)>> serviceHandlers{};
+    ManagerNode* _managerNode;
+};
+
+
 
 #endif // MANAGERMAIN_H

@@ -21,57 +21,44 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ../bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ../bin/dll)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ../bin)
 
-add_library(rpc SHARED
-        ../src/rpc/RpcClient.cpp
-        ../src/rpc/RpcClient.h
-         ../src/rpc/RpcServer.cpp
-         ../src/rpc/RpcServer.h
-)
-
 add_library(common SHARED
         ../src/common/RpcProtocol.cpp
         ../src/common/RpcProtocol.h
-        ../src/common/Utilities.cpp
-        ../src/common/Utilities.h
-        ../src/common/CommandLineParser.cpp
-        ../src/common/CommandLineParser.h
+        ../src/common/RpcSocket.cpp
+        ../src/common/RpcSocket.h
+        ../src/common/RpcChannel.cpp
+        ../src/common/RpcChannel.h
 )
 
 add_library(
         manager SHARED
-        ../src/manager/ManagerMain.cpp
-        ../src/manager/ManagerMain.h
         ../src/manager/ManagerNode.cpp
         ../src/manager/ManagerNode.h
-        ../src/manager/TimeCollector.cpp
-        ../src/manager/TimeCollector.h
+
 )
 
 add_library(
         worker SHARED
-        ../src/worker/ClockService.cpp
-        ../src/worker/ClockService.h
-        ../src/worker/WorkerMain.cpp
-        ../src/worker/WorkerMain.h
         ../src/worker/WorkerNode.cpp
         ../src/worker/WorkerNode.h
+        ../src/worker/RpcClient.cpp
+        ../src/worker/RpcClient.h
 )
 
 add_executable(RPCDistributedClocks
         ../src/main.cpp
         ../src/main.h)
 
-target_link_libraries(RPCDistributedClocks rpc)
-target_link_libraries(RPCDistributedClocks common)
 target_link_libraries(RPCDistributedClocks worker)
 target_link_libraries(RPCDistributedClocks manager)
 
-target_compile_options(RPCDistributedClocks PUBLIC -DASIO_STANDALONE)
-target_include_directories(RPCDistributedClocks PUBLIC ${ASIO_INCLUDE})
+target_link_libraries(manager common)
+target_link_libraries(manager worker)
+target_link_libraries(worker common)
 
 # 针对 Windows 平台的特定链接
 if(WIN32)
-    target_link_libraries(RPCDistributedClocks wsock32 ws2_32)
+    target_link_libraries(common Ws2_32)
 endif()
 
 
